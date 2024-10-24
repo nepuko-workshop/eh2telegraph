@@ -242,33 +242,32 @@ where
         IT: IntoIterator<Item = I>,
         I: Into<Cow<'static, [u8]>>,
     {
-        let mut form = Form::new();
-        let mut cnt = 0;
-        for (idx, data) in files.into_iter().enumerate() {
-            let part = Part::bytes(data).file_name(idx.to_string());
-            form = form.part(idx.to_string(), part);
-            cnt += 1;
+        let mut results = Vec::new();
+        
+        for data in files.into_iter() {
+            let form = Form::new()
+                .text("reqtype", "fileupload")
+                .text("userhash", "") // Empty string for anonymous upload
+                .part("fileToUpload", Part::bytes(data).file_name("image.jpg"));
+
+            let response = self.client
+                .post_builder("https://catbox.moe/user/api.php")
+                .multipart(form)
+                .send()
+                .await
+                .and_then(Response::error_for_status)?;
+
+            let url = response.text().await?;
+            
+            // catbox.moe returns just the URL as plain text
+            if url.starts_with("https://files.catbox.moe/") {
+                results.push(MediaInfo { src: url });
+            } else {
+                return Err(TelegraphError::Server);
+            }
         }
 
-        let r: Result<Vec<MediaInfo>, TelegraphError> = self
-            .client
-            .post_builder("https://telegra.ph/upload")
-            .multipart(form)
-            .send()
-            .await
-            .and_then(Response::error_for_status)?
-            .json::<UploadResult>()
-            .await?
-            .into();
-
-        // Here we check if server returns the same amount as files posted
-        r.and_then(|x| {
-            if x.len() != cnt {
-                Err(TelegraphError::Server)
-            } else {
-                Ok(x)
-            }
-        })
+        Ok(results)
     }
 }
 

@@ -304,9 +304,9 @@ struct UploadedImage {
     src: String,
 }
 
-// Size: {"tag":"img","attrs":{"src":"https://telegra.ph..."}}
 impl From<UploadedImage> for Node {
     fn from(i: UploadedImage) -> Self {
-        Node::new_image(format!("https://telegra.ph{}", i.src))
+        // Use the full URL directly since catbox.moe returns complete URLs
+        Node::new_image(&i.src)
     }
 }
