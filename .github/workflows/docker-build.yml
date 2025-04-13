@@ -8,6 +8,10 @@ on:
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     name: Build
